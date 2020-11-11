@@ -90,6 +90,7 @@ protected:
 
 public:
     using base::base;
+
     constexpr copy_constructible_base() = default;
 };
 
@@ -102,7 +103,7 @@ protected:
 public:
     using base::base;
 
-    constexpr copy_assignable_base & operator=(copy_assignable_base const & rhs)
+    copy_assignable_base & operator=(copy_assignable_base const & rhs)
     {
         if (rhs.contains_value) {
             if (!this->contains_value) {
@@ -116,7 +117,6 @@ public:
         }
         else if (this->contains_value) {
             this->value.~T();
-
             this->contains_value = false;
         }
 
@@ -147,7 +147,7 @@ public:
 
     constexpr move_constructible_base(move_constructible_base const &) = default;
 
-    constexpr move_constructible_base(move_constructible_base && rhs)
+    constexpr move_constructible_base(move_constructible_base && rhs) noexcept(std::is_nothrow_move_constructible_v<T>)
     {
         if (this->contains_value) {
             this->value.~T();
@@ -174,7 +174,7 @@ public:
 
     constexpr move_constructible_base(move_constructible_base const &) = default;
 
-    constexpr move_constructible_base(move_constructible_base &&) = default;
+    constexpr move_constructible_base(move_constructible_base &&) noexcept(std::is_nothrow_move_constructible_v<T>) = default;
 
     move_constructible_base & operator=(move_constructible_base const &) = default;
 };
@@ -190,11 +190,11 @@ public:
 
     constexpr move_assignable_base(move_assignable_base const &) = default;
 
-    constexpr move_assignable_base(move_assignable_base &&) = default;
+    constexpr move_assignable_base(move_assignable_base &&) noexcept(std::is_nothrow_move_constructible_v<T>) = default;
 
     move_assignable_base & operator=(move_assignable_base const &) = default;
 
-    move_assignable_base & operator=(move_assignable_base && rhs)
+    move_assignable_base & operator=(move_assignable_base && rhs) noexcept(std::is_nothrow_move_assignable_v<T> && std::is_nothrow_move_constructible_v<T>)
     {
         if (rhs.contains_value) {
             if (!this->contains_value) {
@@ -227,11 +227,11 @@ public:
 
     constexpr move_assignable_base(move_assignable_base const &) = default;
 
-    constexpr move_assignable_base(move_assignable_base &&) = default;
+    constexpr move_assignable_base(move_assignable_base &&) noexcept(std::is_nothrow_move_constructible_v<T>) = default;
 
     move_assignable_base & operator=(move_assignable_base const &) = default;
 
-    move_assignable_base & operator=(move_assignable_base &&) = default;
+    move_assignable_base & operator=(move_assignable_base &&) noexcept(std::is_nothrow_move_assignable_v<T> && std::is_nothrow_move_constructible_v<T>) = default;
 };
 
 } // namespace storage_traits
