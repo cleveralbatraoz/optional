@@ -1,7 +1,8 @@
 #pragma once
 
+#include "storage.h"
+
 #include <utility>
-#include <variant>
 
 struct nullopt_t
 {
@@ -37,9 +38,9 @@ struct optional
 
     optional & operator=(optional && rhs) = default;
 
-    optional & operator=(nullopt_t null) noexcept
+    optional & operator=(nullopt_t) noexcept
     {
-        this->stg = null;
+        this->stg.reset();
         return *this;
     }
 
@@ -51,27 +52,27 @@ struct optional
 
     constexpr T & operator*() noexcept
     {
-        return std::get<T>(this->stg);
+        return this->stg.get();
     }
 
     constexpr T const & operator*() const noexcept
     {
-        return std::get<T>(this->stg);
+        return this->stg.get();
     }
 
     constexpr T * operator->() noexcept
     {
-        return &std::get<T>(this->stg);
+        return &this->stg.get();
     }
 
     constexpr T const * operator->() const noexcept
     {
-        return &std::get<T>(this->stg);
+        return &this->stg.get();
     }
 
     constexpr explicit operator bool() const noexcept
     {
-        return (std::get_if<T>(&stg) != nullptr);
+        return !stg.empty();
     }
 
     template <typename... Args>
@@ -81,18 +82,18 @@ struct optional
             stg = std::move(T(std::forward<Args>(args)...));
         }
         catch (...) {
-            stg = nullopt;
+            stg.reset();
             throw;
         }
     }
 
     constexpr void reset()
     {
-        this->stg = nullopt;
+        this->stg.reset();
     }
 
 private:
-    std::variant<T, nullopt_t> stg = nullopt;
+    storage_t<T> stg;
 };
 
 template <typename T>
