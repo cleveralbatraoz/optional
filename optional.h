@@ -1,56 +1,134 @@
 #pragma once
 
-struct nullopt_t;
+#include <utility>
+#include <variant>
 
-struct in_place_t;
-
-template <typename T>
-class optional {
-public:
-    constexpr optional() noexcept;
-    constexpr optional(nullopt_t) noexcept;
-
-    constexpr optional(optional const&);
-    constexpr optional(optional&&);
-
-    optional& operator=(optional const&);
-    optional& operator=(optional&&);
-
-    constexpr optional(T value);
-
-    template <typename... Args>
-    explicit constexpr optional(in_place_t, Args&&... args);
-
-    optional& operator=(nullopt_t) noexcept;
-
-    constexpr explicit operator bool() const noexcept;
-
-    constexpr T& operator*() noexcept;
-    constexpr T const& operator*() const noexcept;
-
-    constexpr T* operator->() noexcept;
-    constexpr T const* operator->() const noexcept;
-
-    template <typename... Args>
-    void emplace(Args&&... args);
-
-    void reset();
+struct nullopt_t
+{
 };
 
-template<typename T>
-constexpr bool operator==(optional<T> const &a, optional<T> const &b);
+inline constexpr nullopt_t nullopt;
 
-template<typename T>
-constexpr bool operator!=(optional<T> const &a, optional<T> const &b);
+struct in_place_t
+{
+};
 
-template<typename T>
-constexpr bool operator<(optional<T> const &a, optional<T> const &b);
+inline constexpr in_place_t in_place;
 
-template<typename T>
-constexpr bool operator<=(optional<T> const &a, optional<T> const &b);
+template <typename T>
+struct optional
+{
+    constexpr optional() noexcept = default;
 
-template<typename T>
-constexpr bool operator>(optional<T> const &a, optional<T> const &b);
+    constexpr optional(nullopt_t) noexcept
+    {
+    }
 
-template<typename T>
-constexpr bool operator>=(optional<T> const &a, optional<T> const &b);
+    constexpr optional(T value)
+        : stg(std::move(value))
+    {
+    }
+
+    constexpr optional(optional const & rhs) = default;
+
+    constexpr optional(optional && rhs) = default;
+
+    optional & operator=(optional const & rhs) = default;
+
+    optional & operator=(optional && rhs) = default;
+
+    optional & operator=(nullopt_t null) noexcept
+    {
+        this->stg = null;
+        return *this;
+    }
+
+    template <typename... Args>
+    explicit constexpr optional(in_place_t, Args &&... args)
+        : stg(std::move(T(std::forward<Args>(args)...)))
+    {
+    }
+
+    constexpr T & operator*() noexcept
+    {
+        return std::get<T>(this->stg);
+    }
+
+    constexpr T const & operator*() const noexcept
+    {
+        return std::get<T>(this->stg);
+    }
+
+    constexpr T * operator->() noexcept
+    {
+        return &std::get<T>(this->stg);
+    }
+
+    constexpr T const * operator->() const noexcept
+    {
+        return &std::get<T>(this->stg);
+    }
+
+    constexpr explicit operator bool() const noexcept
+    {
+        return (std::get_if<T>(&stg) != nullptr);
+    }
+
+    template <typename... Args>
+    void emplace(Args &&... args)
+    {
+        try {
+            stg = std::move(T(std::forward<Args>(args)...));
+        }
+        catch (...) {
+            stg = nullopt;
+            throw;
+        }
+    }
+
+    constexpr void reset()
+    {
+        this->stg = nullopt;
+    }
+
+private:
+    std::variant<T, nullopt_t> stg = nullopt;
+};
+
+template <typename T>
+constexpr bool operator==(optional<T> const & a, optional<T> const & b)
+{
+    return ((!static_cast<bool>(a) && !static_cast<bool>(b)) ||
+            (static_cast<bool>(a) && static_cast<bool>(b) && (*a == *b)));
+}
+
+template <typename T>
+constexpr bool operator!=(optional<T> const & a, optional<T> const & b)
+{
+    return !(a == b);
+}
+
+template <typename T>
+constexpr bool operator<(optional<T> const & a, optional<T> const & b)
+{
+    return ((static_cast<bool>(a) < static_cast<bool>(b)) ||
+            (static_cast<bool>(a) && static_cast<bool>(b) && (*a < *b)));
+}
+
+template <typename T>
+constexpr bool operator<=(optional<T> const & a, optional<T> const & b)
+{
+    return (a < b || a == b);
+}
+
+template <typename T>
+constexpr bool operator>(optional<T> const & a, optional<T> const & b)
+{
+    return b < a;
+}
+
+template <typename T>
+constexpr bool operator>=(optional<T> const & a, optional<T> const & b)
+{
+    return !(a < b);
+}
