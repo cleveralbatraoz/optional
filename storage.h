@@ -237,9 +237,8 @@ public:
 } // namespace storage_traits
 
 template <typename T>
-struct storage_t final : private storage_traits::move_assignable_base<T, std::is_trivially_move_assignable_v<T>>
+class storage_t final : storage_traits::move_assignable_base<T, std::is_trivially_move_assignable_v<T>>
 {
-protected:
     using base = storage_traits::move_assignable_base<T, std::is_trivially_move_assignable_v<T>>;
 
 public:
