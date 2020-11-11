@@ -1,6 +1,9 @@
 #pragma once
 
 #include <type_traits>
+#include <utility>
+
+namespace storage_traits {
 
 template <typename T, bool is_trivial>
 struct destructible_base
@@ -23,6 +26,7 @@ struct destructible_base
         }
     }
 
+protected:
     union
     {
         T value;
@@ -36,7 +40,8 @@ template <typename T>
 struct destructible_base<T, true>
 {
     constexpr destructible_base() noexcept
-        : dummy(0), contains_value(false)
+        : dummy(0)
+        , contains_value(false)
     {
     }
 
@@ -48,6 +53,7 @@ struct destructible_base<T, true>
 
     ~destructible_base() = default;
 
+protected:
     union
     {
         T value;
@@ -58,9 +64,12 @@ struct destructible_base<T, true>
 };
 
 template <typename T, bool is_trivial>
-struct copy_constructible_base : destructible_base<T, std::is_trivially_destructible_v<T>>
+struct copy_constructible_base : protected destructible_base<T, std::is_trivially_destructible_v<T>>
 {
+protected:
     using base = destructible_base<T, std::is_trivially_destructible_v<T>>;
+
+public:
     using base::base;
 
     constexpr copy_constructible_base(copy_constructible_base const & rhs)
@@ -74,18 +83,23 @@ struct copy_constructible_base : destructible_base<T, std::is_trivially_destruct
 };
 
 template <typename T>
-struct copy_constructible_base<T, true> : destructible_base<T, std::is_trivially_destructible_v<T>>
+struct copy_constructible_base<T, true> : protected destructible_base<T, std::is_trivially_destructible_v<T>>
 {
+protected:
     using base = destructible_base<T, std::is_trivially_destructible_v<T>>;
-    using base::base;
 
+public:
+    using base::base;
     constexpr copy_constructible_base() = default;
 };
 
 template <typename T, bool is_trivial>
-struct copy_assignable_base : copy_constructible_base<T, std::is_trivially_copy_constructible_v<T>>
+struct copy_assignable_base : protected copy_constructible_base<T, std::is_trivially_copy_constructible_v<T>>
 {
+protected:
     using base = copy_constructible_base<T, std::is_trivially_copy_constructible_v<T>>;
+
+public:
     using base::base;
 
     constexpr copy_assignable_base & operator=(copy_assignable_base const & rhs)
@@ -111,18 +125,24 @@ struct copy_assignable_base : copy_constructible_base<T, std::is_trivially_copy_
 };
 
 template <typename T>
-struct copy_assignable_base<T, true> : copy_constructible_base<T, std::is_trivially_copy_constructible_v<T>>
+struct copy_assignable_base<T, true> : protected copy_constructible_base<T, std::is_trivially_copy_constructible_v<T>>
 {
+protected:
     using base = copy_constructible_base<T, std::is_trivially_copy_constructible_v<T>>;
+
+public:
     using base::base;
 
     constexpr copy_assignable_base & operator=(copy_assignable_base const & rhs) = default;
 };
 
 template <typename T, bool is_trivial>
-struct move_constructible_base : copy_assignable_base<T, std::is_trivially_copy_assignable_v<T>>
+struct move_constructible_base : protected copy_assignable_base<T, std::is_trivially_copy_assignable_v<T>>
 {
+protected:
     using base = copy_assignable_base<T, std::is_trivially_copy_assignable_v<T>>;
+
+public:
     using base::base;
 
     constexpr move_constructible_base(move_constructible_base const &) = default;
@@ -144,9 +164,12 @@ struct move_constructible_base : copy_assignable_base<T, std::is_trivially_copy_
 };
 
 template <typename T>
-struct move_constructible_base<T, true> : copy_assignable_base<T, std::is_trivially_copy_assignable_v<T>>
+struct move_constructible_base<T, true> : protected copy_assignable_base<T, std::is_trivially_copy_assignable_v<T>>
 {
+protected:
     using base = copy_assignable_base<T, std::is_trivially_copy_assignable_v<T>>;
+
+public:
     using base::base;
 
     constexpr move_constructible_base(move_constructible_base const &) = default;
@@ -157,9 +180,12 @@ struct move_constructible_base<T, true> : copy_assignable_base<T, std::is_trivia
 };
 
 template <typename T, bool is_trivial>
-struct move_assignable_base : move_constructible_base<T, std::is_trivially_move_constructible_v<T>>
+struct move_assignable_base : protected move_constructible_base<T, std::is_trivially_move_constructible_v<T>>
 {
+protected:
     using base = move_constructible_base<T, std::is_trivially_move_constructible_v<T>>;
+
+public:
     using base::base;
 
     constexpr move_assignable_base(move_assignable_base const &) = default;
@@ -191,9 +217,12 @@ struct move_assignable_base : move_constructible_base<T, std::is_trivially_move_
 };
 
 template <typename T>
-struct move_assignable_base<T, true> : move_constructible_base<T, std::is_trivially_move_constructible_v<T>>
+struct move_assignable_base<T, true> : protected move_constructible_base<T, std::is_trivially_move_constructible_v<T>>
 {
+protected:
     using base = move_constructible_base<T, std::is_trivially_move_constructible_v<T>>;
+
+public:
     using base::base;
 
     constexpr move_assignable_base(move_assignable_base const &) = default;
@@ -205,10 +234,15 @@ struct move_assignable_base<T, true> : move_constructible_base<T, std::is_trivia
     move_assignable_base & operator=(move_assignable_base &&) = default;
 };
 
+} // namespace storage_traits
+
 template <typename T>
-struct storage_t : move_assignable_base<T, std::is_trivially_move_assignable_v<T>>
+struct storage_t final : private storage_traits::move_assignable_base<T, std::is_trivially_move_assignable_v<T>>
 {
-    using base = move_assignable_base<T, std::is_trivially_move_assignable_v<T>>;
+protected:
+    using base = storage_traits::move_assignable_base<T, std::is_trivially_move_assignable_v<T>>;
+
+public:
     using base::base;
 
     constexpr T & get()
