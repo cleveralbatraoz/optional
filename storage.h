@@ -9,7 +9,8 @@ template <typename T, bool is_trivial>
 struct destructible_base
 {
     constexpr destructible_base() noexcept
-        : contains_value(false)
+        : dummy(0)
+        , contains_value(false)
     {
     }
 
@@ -27,6 +28,12 @@ struct destructible_base
     }
 
 protected:
+    constexpr void clear_value()
+    {
+        this->value.~T();
+        this->contains_value = false;
+    }
+
     union
     {
         T value;
@@ -54,6 +61,11 @@ struct destructible_base<T, true>
     ~destructible_base() = default;
 
 protected:
+    constexpr void clear_value() noexcept
+    {
+        this->contains_value = false;
+    }
+
     union
     {
         T value;
@@ -75,7 +87,6 @@ public:
     constexpr copy_constructible_base(copy_constructible_base const & rhs)
     {
         this->contains_value = rhs.contains_value;
-
         if (this->contains_value) {
             new (&this->value) T(rhs.value);
         }
@@ -116,8 +127,7 @@ public:
             this->contains_value = true;
         }
         else if (this->contains_value) {
-            this->value.~T();
-            this->contains_value = false;
+            this->clear_value();
         }
 
         return *this;
@@ -149,11 +159,6 @@ public:
 
     constexpr move_constructible_base(move_constructible_base && rhs) noexcept(std::is_nothrow_move_constructible_v<T>)
     {
-        if (this->contains_value) {
-            this->value.~T();
-            this->contains_value = false;
-        }
-
         this->contains_value = rhs.contains_value;
         if (this->contains_value) {
             new (&this->value) T(std::move(rhs.value));
@@ -174,7 +179,7 @@ public:
 
     constexpr move_constructible_base(move_constructible_base const &) = default;
 
-    constexpr move_constructible_base(move_constructible_base &&) noexcept(std::is_nothrow_move_constructible_v<T>) = default;
+    constexpr move_constructible_base(move_constructible_base &&) = default;
 
     move_constructible_base & operator=(move_constructible_base const &) = default;
 };
@@ -190,7 +195,7 @@ public:
 
     constexpr move_assignable_base(move_assignable_base const &) = default;
 
-    constexpr move_assignable_base(move_assignable_base &&) noexcept(std::is_nothrow_move_constructible_v<T>) = default;
+    constexpr move_assignable_base(move_assignable_base &&) = default;
 
     move_assignable_base & operator=(move_assignable_base const &) = default;
 
@@ -207,9 +212,7 @@ public:
             this->contains_value = true;
         }
         else if (this->contains_value) {
-            this->value.~T();
-
-            this->contains_value = false;
+            this->clear_value();
         }
 
         return *this;
@@ -221,17 +224,15 @@ struct move_assignable_base<T, true> : protected move_constructible_base<T, std:
 {
 protected:
     using base = move_constructible_base<T, std::is_trivially_move_constructible_v<T>>;
-
-public:
     using base::base;
 
     constexpr move_assignable_base(move_assignable_base const &) = default;
 
-    constexpr move_assignable_base(move_assignable_base &&) noexcept(std::is_nothrow_move_constructible_v<T>) = default;
+    constexpr move_assignable_base(move_assignable_base &&) = default;
 
     move_assignable_base & operator=(move_assignable_base const &) = default;
 
-    move_assignable_base & operator=(move_assignable_base &&) noexcept(std::is_nothrow_move_assignable_v<T> && std::is_nothrow_move_constructible_v<T>) = default;
+    move_assignable_base & operator=(move_assignable_base &&) = default;
 };
 
 } // namespace storage_traits
@@ -244,21 +245,20 @@ class storage_t final : storage_traits::move_assignable_base<T, std::is_triviall
 public:
     using base::base;
 
-    constexpr T & get()
+    constexpr T & get() noexcept
     {
         return this->value;
     }
 
-    constexpr T const & get() const
+    constexpr T const & get() const noexcept
     {
         return this->value;
     }
 
     constexpr void reset()
     {
-        if (this->contains_value) {
-            this->contains_value = false;
-            this->value.~T();
+        if (!this->empty()) {
+            this->clear_value();
         }
     }
 
