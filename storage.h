@@ -28,7 +28,7 @@ struct destructible_base
     }
 
 protected:
-    constexpr void clear_value()
+    constexpr void clear_value() noexcept
     {
         this->value.~T();
         this->contains_value = false;
@@ -255,14 +255,14 @@ public:
         return this->value;
     }
 
-    constexpr void reset()
+    constexpr void reset() noexcept
     {
         if (!this->empty()) {
             this->clear_value();
         }
     }
 
-    constexpr bool empty() const
+    constexpr bool empty() const noexcept
     {
         return !this->contains_value;
     }
