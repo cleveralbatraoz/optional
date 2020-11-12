@@ -79,10 +79,9 @@ struct optional
     void emplace(Args &&... args)
     {
         try {
-            stg = std::move(T(std::forward<Args>(args)...));
+            stg.emplace(std::forward<Args>(args)...);
         }
         catch (...) {
-            stg.reset();
             throw;
         }
     }
