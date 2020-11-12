@@ -266,4 +266,18 @@ public:
     {
         return !this->contains_value;
     }
+
+    template <typename... Args>
+    void emplace(Args &&... args)
+    {
+        if (this->contains_value) {
+            this->clear_value();
+            this->value = T(std::forward<Args &&>(args)...);
+        }
+        else {
+            new (&this->value) T(std::forward<Args &&>(args)...);
+        }
+
+        this->contains_value = true;
+    }
 };
