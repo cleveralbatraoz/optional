@@ -271,7 +271,6 @@ public:
     void emplace(Args &&... args)
     {
         if (this->contains_value) {
-            this->clear_value();
             this->value = T(std::forward<Args &&>(args)...);
         }
         else {

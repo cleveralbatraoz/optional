@@ -78,12 +78,7 @@ struct optional
     template <typename... Args>
     void emplace(Args &&... args)
     {
-        try {
-            stg.emplace(std::forward<Args>(args)...);
-        }
-        catch (...) {
-            throw;
-        }
+        stg.emplace(std::forward<Args>(args)...);
     }
 
     constexpr void reset()
