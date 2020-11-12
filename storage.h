@@ -270,19 +270,10 @@ public:
     template <typename... Args>
     void emplace(Args &&... args)
     {
-        try {
-            if (this->contains_value) {
-                this->value = T(std::forward<Args &&>(args)...);
-            }
-            else {
-                new (&this->value) T(std::forward<Args &&>(args)...);
-            }
+        if (this->contains_value) {
+            this->clear_value();
         }
-        catch (...) {
-            this->contains_value = false;
-            throw;
-        }
-
+        new (&this->value) T(std::forward<Args &&>(args)...);
         this->contains_value = true;
     }
 };
