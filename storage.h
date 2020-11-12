@@ -273,7 +273,7 @@ public:
         if (this->contains_value) {
             this->clear_value();
         }
-        new (&this->value) T(std::forward<Args &&>(args)...);
+        new (&this->value) T(std::forward<Args>(args)...);
         this->contains_value = true;
     }
 };
